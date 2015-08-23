@@ -1,0 +1,4 @@
+[package]
+name = "passert"
+version = "0.1.0"
+authors = ["Manuel Woelker <github@manuel.woelker.org>"]
