@@ -70,7 +70,9 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
 
     //path, tts, EMPTY_CTXT
     let panic_path = cx.path(sp, vec!(str_to_ident("panic")));
-    let my_mac = codemap::respan(sp, ast::MacInvocTT(panic_path, vec!(), ast::EMPTY_CTXT));
+    let literal = token::Token::Literal(token::Str_(token::intern("testing only {:?}")), Option::None);
+    let token_tree = TtToken(sp, literal);
+    let my_mac = codemap::respan(sp, ast::MacInvocTT(panic_path, vec!(token_tree), ast::EMPTY_CTXT));
     println!("my_mac: {:?}", my_mac);
     let my_panic = ast::ExprMac(my_mac);
     let my_panic_expr = cx.expr(sp, my_panic);

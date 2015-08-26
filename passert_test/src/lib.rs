@@ -4,7 +4,9 @@
 fn foo() {
     let a = 3;
     let b = 4;
-//    passert!(a == b);
+    panic!("testing only  x {:?}", 3);
+    passert!(a == b);
+//    let msg = String::from("foobar");
     passert!(panic!("foo"));
 }
 
