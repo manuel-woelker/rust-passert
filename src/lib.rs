@@ -52,6 +52,8 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
 
     MacEager::expr(cx.expr_u32(sp, total))
     */
+    println!("///////////////////////////////////////////////////////////");
+    println!("tt: {:?}", args);
 
     let mut parser = cx.new_parser_from_tts(args);
 
@@ -71,8 +73,12 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     //path, tts, EMPTY_CTXT
     let panic_path = cx.path(sp, vec!(str_to_ident("panic")));
     let literal = token::Token::Literal(token::Str_(token::intern("testing only {:?}")), Option::None);
-    let token_tree = TtToken(sp, literal);
-    let my_mac = codemap::respan(sp, ast::MacInvocTT(panic_path, vec!(token_tree), ast::EMPTY_CTXT));
+    let tt_string = TtToken(sp, literal);
+//    let panic_args = TtSequence(sp, Rc::new(SequenceRepetition {tts: vec!(token_tree)}));
+    let result_ident = str_to_ident("result");
+    let tt_arg = TtToken(sp, token::Ident(result_ident, token::Plain));
+    let tt_comma = TtToken(sp, token::Comma);
+    let my_mac = codemap::respan(sp, ast::MacInvocTT(panic_path, vec!(tt_string, tt_comma, tt_arg), ast::EMPTY_CTXT));
     println!("my_mac: {:?}", my_mac);
     let my_panic = ast::ExprMac(my_mac);
     let my_panic_expr = cx.expr(sp, my_panic);
@@ -82,18 +88,19 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     println!("Exp string: {}", s);
 //    MacEager::expr(cx.expr_u32(sp, 2014))
     let mut stmts = Vec::new();
-    let result_ident = str_to_ident("result");
-//    stmts.push(cx.stmt_let(sp, false, result_ident, expr));
+    stmts.push(cx.stmt_let(sp, false, result_ident, expr));
+    stmts.push(cx.stmt_expr(my_panic_expr));
+
     let condition = cx.expr_unary(sp, ast::UnOp::UnNot, cx.expr_ident(sp, result_ident));
     let then_expr = cx.expr_u32(sp, 1234);
 //    let panic_mac = codemap::respan(sp, )
     //let then_expr = ast::ExprMac()
-    stmts.push(cx.stmt_expr(cx.expr_if(sp, condition, then_expr, Option::None)));
+//    stmts.push(cx.stmt_expr(cx.expr_if(sp, condition, then_expr, Option::None)));
     let block = cx.block(sp, stmts, Option::None);
     let expr_block = cx.expr_block(block);
-//    MacEager::expr(expr_block)
+    MacEager::expr(expr_block)
 //    MacEager::expr(expr)
-    MacEager::expr(my_panic_expr)
+//    MacEager::expr(my_panic_expr)
 //    MacEager::stmts(SmallVector::one(cx.stmt_let(sp, false, str_to_ident("foo"), expr)))
 
 //    return DummyResult::any(sp);

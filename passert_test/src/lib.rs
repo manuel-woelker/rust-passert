@@ -4,10 +4,10 @@
 fn foo() {
     let a = 3;
     let b = 4;
-    panic!("testing only  x {:?}", 3);
+//    passert!(panic!("testing only  x {:?}", 3));
     passert!(a == b);
 //    let msg = String::from("foobar");
-    passert!(panic!("foo"));
+//    passert!(panic!("foo"));
 }
 
 #[test]
