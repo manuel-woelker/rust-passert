@@ -9,7 +9,7 @@ extern crate rustc;
 
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token::{self, str_to_ident};
-use syntax::ast::{self, TokenTree, TtToken, Expr, Expr_};
+use syntax::ast::{self, TokenTree, TtToken, Expr, Expr_, Stmt};
 use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
 use syntax::util::small_vector::SmallVector;
 use syntax::codemap;
@@ -21,11 +21,44 @@ use syntax::ptr::P;
 fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
     println!("///////////////////////////////////////////////////////////");
-    println!("tt: {:?}", args);
+    let s = pprust::tts_to_string(args);
+    println!("Exp string:  {}", s);
+//    println!("tt: {:?}", args);
 
     let mut parser = cx.new_parser_from_tts(args);
     let expr: P<Expr> = parser.parse_expr();
-    println!("START POS: {}", cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize());
+    let span_string = cx.codemap().span_to_snippet(expr.span).unwrap();
+    println!("Span string: {}", span_string);
+
+    let mut assertion_helper = AssertionHelper::new();
+
+    let root_expr = assertion_helper.collect_expression(&expr, cx);
+
+    let mut stmts = Vec::new();
+    stmts.extend(assertion_helper.statements);
+
+    let condition = cx.expr_unary(sp, ast::UnOp::UnNot, root_expr);
+
+    // Panic path
+    let literal = token::Token::Literal(token::Str_(token::intern(&format!("Assertion failed: {}", span_string))), Option::None);
+    let tt_string = TtToken(sp, literal);
+    let panic_path = cx.path(sp, vec!(str_to_ident("panic")));
+    let my_mac = codemap::respan(sp, ast::MacInvocTT(panic_path, vec!(tt_string), ast::EMPTY_CTXT));
+    let my_panic = ast::ExprMac(my_mac);
+    let my_panic_expr = cx.expr(sp, my_panic);
+
+    let then_expr = my_panic_expr;
+    // Check statement
+    stmts.push(cx.stmt_expr(cx.expr_if(sp, condition, then_expr, Option::None)));
+
+    // assertion block
+    let block = cx.block(sp, stmts, Option::None);
+    let expr_block = cx.expr_block(block);
+    MacEager::expr(expr_block)
+
+/*
+    let first_column = cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize();
+    println!("START POS: {}", first_column);
     cx.span_note(sp, "Foobar was here");
     let mut stmts = Vec::new();
     let temp1_ident = str_to_ident("temp1");
@@ -57,9 +90,9 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         println!("QQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQQ");
         println!("mac: {:?}", mac);
     }
+*/
 
-
-
+/*
     //path, tts, EMPTY_CTXT
     let panic_path = cx.path(sp, vec!(str_to_ident("panic")));
     let literal = token::Token::Literal(token::Str_(token::intern("testing only {:?}")), Option::None);
@@ -75,8 +108,6 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     let my_panic_expr = cx.expr(sp, my_panic);
     println!("Expression: {:?}", expr);
     println!("Span: {:?}", sp);
-    let s = pprust::tts_to_string(args);
-    println!("Exp string: {}", s);
 //    MacEager::expr(cx.expr_u32(sp, 2014))
     stmts.push(cx.stmt_let(sp, false, result_ident, expr));
     stmts.push(cx.stmt_expr(my_panic_expr));
@@ -94,6 +125,69 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
 //    MacEager::stmts(SmallVector::one(cx.stmt_let(sp, false, str_to_ident("foo"), expr)))
 
 //    return DummyResult::any(sp);
+*/
+}
+
+struct Expression {
+    column_offset: usize,
+    var_name: String
+}
+
+struct AssertionHelper {
+    intermediate_counter: usize,
+    statements: Vec<P<Stmt>>
+}
+
+impl AssertionHelper {
+    fn new() -> AssertionHelper {
+        AssertionHelper {intermediate_counter: 0, statements: Vec::new()}
+    }
+
+    fn collect_expression(&mut self, expr: &P<Expr>, cx: &mut ExtCtxt) -> P<Expr> {
+        println!("Collecting expression: {:?}", expr);
+        match (*expr).node {
+            Expr_::ExprBinary(ref op, ref a, ref b) => {
+                println!("BINARY");
+                let new_a = self.collect_expression(a, cx);
+                let new_b = self.collect_expression(b, cx);
+                let new_expr = cx.expr_binary(expr.span, op.node, new_a, new_b);
+                self.create_let_statement(&new_expr, cx)
+            }
+            _ => {
+                self.create_let_statement(expr, cx)
+            }
+        }
+        /*
+        if let Expr_::ExprBinary(ref op, ref a, ref b) = (*expr).node {
+            stmts.push(cx.stmt_let(sp, false, temp1_ident, a.clone()));
+            stmts.push(cx.stmt_let(sp, false, temp2_ident, b.clone()));
+
+            // Format left side of expression
+            let format_path = cx.path(sp, vec!(str_to_ident("format")));
+            let format_string = TtToken(sp, token::Token::Literal(token::Str_(token::intern("x{:?}x")), Option::None));
+
+            let tt_arg = TtToken(sp, token::Ident(temp1_ident, token::Plain));
+            let tt_comma = TtToken(sp, token::Comma);
+            let my_mac = codemap::respan(sp, ast::MacInvocTT(format_path, vec!(format_string, tt_comma, tt_arg), ast::EMPTY_CTXT));
+            println!("my_mac: {:?}", my_mac);
+            let my_format = ast::ExprMac(my_mac);
+            let my_format_expr = cx.expr(sp, my_format);
+
+            stmts.push(cx.stmt_let(sp, false, temp1_str_ident, my_format_expr));
+        }
+*/
+    }
+
+    fn create_let_statement(&mut self, expr: &P<Expr>, cx: &mut ExtCtxt) -> P<Expr> {
+        let var_name = format!("temp_{}", self.intermediate_counter);
+        self.intermediate_counter += 1;
+        let ident = str_to_ident(&var_name);
+        let let_stmt = cx.stmt_let(expr.span, false, ident, expr.clone());
+        println!("LET {:?} @{} {}", let_stmt, cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize()+1, stringify!(a+b  +  c));
+        self.statements.push(let_stmt);
+        cx.expr_ident(expr.span, ident)
+    }
+
 }
 
 #[plugin_registrar]
