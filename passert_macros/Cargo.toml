@@ -1,9 +1,11 @@
 [package]
-name = "passert"
+name = "passert_macros"
 version = "0.1.0"
 authors = ["Manuel Woelker <github@manuel.woelker.org>"]
 
 
 [lib]
+crate-type = ["dylib"]
+plugin = true
 
 [dependencies]

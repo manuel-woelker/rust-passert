@@ -1,5 +1,5 @@
 #![feature(plugin)]
-#![plugin(passert)]
+#![plugin(passert_macros)]
 
 fn foo() {
     let a = 3;

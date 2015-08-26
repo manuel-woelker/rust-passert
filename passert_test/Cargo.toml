@@ -3,5 +3,5 @@ name = "passert_test"
 version = "0.1.0"
 authors = ["Manuel Woelker <github@manuel.woelker.org>"]
 
-[dependencies.passert]
-path = ".."
+[dependencies.passert_macros]
+path = "../passert_macros"
