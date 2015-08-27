@@ -2,8 +2,12 @@
 name = "passert"
 version = "0.1.0"
 authors = ["Manuel Woelker <github@manuel.woelker.org>"]
+description = "Pretty/Power assertion macros for rust"
 
+repository = "https://github.com/manuel-woelker/rust-passert"
 
-[lib]
+readme = "README.md"
 
-[dependencies]
+keywords = ["assert", "test"]
+
+license = "MIT"

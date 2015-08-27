@@ -2,7 +2,15 @@
 name = "passert_macros"
 version = "0.1.0"
 authors = ["Manuel Woelker <github@manuel.woelker.org>"]
+description = "Pretty/Power assertion macros for rust (macro crate)"
 
+repository = "https://github.com/manuel-woelker/rust-passert"
+
+readme = "../README.md"
+
+keywords = ["assert", "test"]
+
+license = "MIT"
 
 [lib]
 crate-type = ["dylib"]
