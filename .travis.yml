@@ -1,3 +1,8 @@
 language: rust
 rust:
   - nightly
+env:
+  - TEST_DIR=.
+  - TEST_DIR=passert_macros
+  - TEST_DIR=passert_test
+script: cd $TEST_DIR && cargo build --verbose && cargo test --verbose
