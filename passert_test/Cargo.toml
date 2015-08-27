@@ -5,3 +5,6 @@ authors = ["Manuel Woelker <github@manuel.woelker.org>"]
 
 [dependencies.passert_macros]
 path = "../passert_macros"
+
+[dependencies.passert]
+path = ".."

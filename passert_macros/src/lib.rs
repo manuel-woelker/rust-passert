@@ -42,12 +42,36 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
     // Panic path
     let literal = token::Token::Literal(token::Str_(token::intern(&format!("Assertion failed: {}", span_string))), Option::None);
     let tt_string = TtToken(sp, literal);
-    let panic_path = cx.path(sp, vec!(str_to_ident("panic")));
-    let my_mac = codemap::respan(sp, ast::MacInvocTT(panic_path, vec!(tt_string), ast::EMPTY_CTXT));
-    let my_panic = ast::ExprMac(my_mac);
-    let my_panic_expr = cx.expr(sp, my_panic);
+    let panic_expr = create_macro_call(cx, sp, "panic", vec!(tt_string));
 
-    let then_expr = my_panic_expr;
+    let mut then_stmts = Vec::new();
+    // Create helper
+    let helper_ident = str_to_ident("helper");
+    let args = vec!(
+        cx.expr_usize(sp, cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize()),
+        cx.expr_str(sp, token::intern_and_get_ident(&span_string)));
+    let new_call = cx.expr_call_global(sp, vec!(str_to_ident("passert"),str_to_ident("PassertHelper"),str_to_ident("new")), args);
+    let let_stmt = cx.stmt_let(sp, true, helper_ident, new_call);
+
+    then_stmts.push(let_stmt);
+
+    for expression in assertion_helper.expressions {
+        let literal = token::Token::Literal(token::Str_(token::intern("{:?}")), Option::None);
+        let tt_string = TtToken(sp, literal);
+        let tt_comma = TtToken(sp, token::Comma);
+        let tt_arg = TtToken(sp, token::Ident(str_to_ident(&expression.var_name), token::Plain));
+        let format_expr = create_macro_call(cx, sp, "format", vec!(tt_string, tt_comma, tt_arg));
+        let args = vec!(cx.expr_usize(sp, expression.column_offset), format_expr);
+        let call_expr = cx.expr_method_call(sp, cx.expr_ident(sp, helper_ident), str_to_ident("add_expression"), args);
+        then_stmts.push(cx.stmt_expr(call_expr));
+    }
+
+    let print_result_expr = cx.expr_method_call(sp, cx.expr_ident(sp, helper_ident), str_to_ident("print_result"), Vec::new());
+    then_stmts.push(cx.stmt_expr(print_result_expr));
+
+    then_stmts.push(cx.stmt_expr(panic_expr));
+
+    let then_expr = cx.expr_block(cx.block(sp, then_stmts, Option::None));
     // Check statement
     stmts.push(cx.stmt_expr(cx.expr_if(sp, condition, then_expr, Option::None)));
 
@@ -128,6 +152,12 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
 */
 }
 
+fn create_macro_call(cx: &mut ExtCtxt, sp: Span, name: &str, args: Vec<TokenTree>) -> P<Expr> {
+    let macro_path = cx.path(sp, vec!(str_to_ident(name)));
+    let invocation = codemap::respan(sp, ast::MacInvocTT(macro_path, args, ast::EMPTY_CTXT));
+    cx.expr(sp, ast::ExprMac(invocation))
+}
+
 struct Expression {
     column_offset: usize,
     var_name: String
@@ -135,12 +165,13 @@ struct Expression {
 
 struct AssertionHelper {
     intermediate_counter: usize,
-    statements: Vec<P<Stmt>>
+    statements: Vec<P<Stmt>>,
+    expressions: Vec<Expression>
 }
 
 impl AssertionHelper {
     fn new() -> AssertionHelper {
-        AssertionHelper {intermediate_counter: 0, statements: Vec::new()}
+        AssertionHelper {intermediate_counter: 0, statements: Vec::new(), expressions: Vec::new()}
     }
 
     fn collect_expression(&mut self, expr: &P<Expr>, cx: &mut ExtCtxt) -> P<Expr> {
@@ -183,8 +214,10 @@ impl AssertionHelper {
         self.intermediate_counter += 1;
         let ident = str_to_ident(&var_name);
         let let_stmt = cx.stmt_let(expr.span, false, ident, expr.clone());
-        println!("LET {:?} @{} {}", let_stmt, cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize()+1, stringify!(a+b  +  c));
+        let column_offset = cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize();
+        println!("LET {:?} @{} {}", let_stmt, cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize(), stringify!(a+b  +  c));
         self.statements.push(let_stmt);
+        self.expressions.push(Expression{column_offset: column_offset, var_name: var_name});
         cx.expr_ident(expr.span, ident)
     }
 
