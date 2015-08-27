@@ -2,6 +2,7 @@
 
 [![Travis Build Status](https://travis-ci.org/manuel-woelker/rust-passert.svg)](https://travis-ci.org/manuel-woelker/rust-passert)
 [![MIT licensed](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
+[![crates.io](http://meritbadge.herokuapp.com/passert)](https://crates.io/crates/passert)
 
 Pretty/Power assertion macros for rust
 
