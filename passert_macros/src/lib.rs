@@ -10,29 +10,25 @@ extern crate rustc;
 use syntax::codemap::{Span, Pos};
 use syntax::parse::token::{self, str_to_ident};
 use syntax::ast::{self, TokenTree, TtToken, Expr, Expr_, Stmt};
-use syntax::ext::base::{ExtCtxt, MacResult, DummyResult, MacEager};
-use syntax::util::small_vector::SmallVector;
+use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::codemap;
-use syntax::ext::build::AstBuilder;  // trait for expr_usize
-use syntax::print::pprust;  // trait for expr_usize
+use syntax::ext::build::AstBuilder;
 use rustc::plugin::Registry;
 use syntax::ptr::P;
 
 fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
-    println!("///////////////////////////////////////////////////////////");
 
     let mut parser = cx.new_parser_from_tts(args);
     let expr: P<Expr> = parser.parse_expr();
     let span_string = cx.codemap().span_to_snippet(expr.span).unwrap();
-    println!("Span string: {}", span_string);
 
-    let mut assertion_helper = AssertionHelper::new();
+    let mut expression_collector = ExpressionCollector::new();
 
-    let root_expr = assertion_helper.collect_expression(&expr, cx);
+    let root_expr = expression_collector.collect_expression(&expr, cx);
 
     let mut stmts = Vec::new();
-    stmts.extend(assertion_helper.statements);
+    stmts.extend(expression_collector.statements);
 
     let condition = cx.expr_unary(sp, ast::UnOp::UnNot, root_expr);
 
@@ -52,7 +48,7 @@ fn expand_passert(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
 
     then_stmts.push(let_stmt);
 
-    for expression in assertion_helper.expressions {
+    for expression in expression_collector.expressions {
         let literal = token::Token::Literal(token::Str_(token::intern("{:?}")), Option::None);
         let tt_string = TtToken(sp, literal);
         let tt_comma = TtToken(sp, token::Comma);
@@ -89,22 +85,20 @@ struct Expression {
     var_name: String
 }
 
-struct AssertionHelper {
+struct ExpressionCollector {
     intermediate_counter: usize,
     statements: Vec<P<Stmt>>,
     expressions: Vec<Expression>
 }
 
-impl AssertionHelper {
-    fn new() -> AssertionHelper {
-        AssertionHelper {intermediate_counter: 0, statements: Vec::new(), expressions: Vec::new()}
+impl ExpressionCollector {
+    fn new() -> ExpressionCollector {
+        ExpressionCollector {intermediate_counter: 0, statements: Vec::new(), expressions: Vec::new()}
     }
 
     fn collect_expression(&mut self, expr: &P<Expr>, cx: &mut ExtCtxt) -> P<Expr> {
-        println!("Collecting expression: {:?}", expr);
         match (*expr).node {
             Expr_::ExprBinary(ref op, ref a, ref b) => {
-                println!("BINARY");
                 let new_a = self.collect_expression(a, cx);
                 let new_b = self.collect_expression(b, cx);
                 let new_expr = cx.expr_binary(expr.span, op.node, new_a, new_b);
@@ -131,7 +125,6 @@ impl AssertionHelper {
         let ident = str_to_ident(&var_name);
         let let_stmt = cx.stmt_let(expr.span, false, ident, expr.clone());
         let column_offset = cx.codemap().lookup_char_pos(span.lo).col.to_usize();
-        println!("LET {:?} @{} {}", let_stmt, cx.codemap().lookup_char_pos(expr.span.lo).col.to_usize(), stringify!(a+b  +  c));
         self.statements.push(let_stmt);
         self.expressions.push(Expression{column_offset: column_offset, var_name: var_name});
         cx.expr_ident(expr.span, ident)
@@ -142,11 +135,4 @@ impl AssertionHelper {
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_macro("passert", expand_passert);
-}
-
-
-
-#[test]
-fn it_works() {
-//     assert_eq!(rn!(MMXV), 2015);
 }

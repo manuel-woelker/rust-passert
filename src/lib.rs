@@ -1,6 +1,5 @@
 use std::cmp;
 
-
 pub struct PassertInfo {
     column_offset: usize,
     value: String
@@ -24,15 +23,14 @@ impl PassertHelper {
     }
 
     fn place_string(line: &mut String, column: usize, what: &str) {
-        let neededLength = column+what.len();
-        if neededLength > line.len() {
-            let diff = neededLength - line.len();
+        let needed_length = column+what.len();
+        if needed_length > line.len() {
+            let diff = needed_length - line.len();
             for _ in 0..diff {
                 line.push(' ');
             }
         }
         *line = String::new() + &line[..column] + what + &line[column+what.len()..];
-//        line.replace(anchor, anchor + str.length(), str)
     }
 
     fn fits(line: & String, column: usize, width: usize) -> bool {
@@ -51,7 +49,7 @@ impl PassertHelper {
             PassertHelper::place_string(&mut lines.get_mut(0).unwrap(), info.column_offset, "|");
             for i in 1..lines.len() {
                 let mut line = lines.get_mut(i).unwrap();
-                if(PassertHelper::fits(&mut line, info.column_offset, info.value.len()+1)) {
+                if PassertHelper::fits(&mut line, info.column_offset, info.value.len()+1) {
                     // found a place
                     PassertHelper::place_string(&mut line, info.column_offset, &info.value);
                     continue 'outer;
@@ -67,8 +65,4 @@ impl PassertHelper {
         }
     }
 
-}
-
-#[test]
-fn it_works() {
 }
