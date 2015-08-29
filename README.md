@@ -44,3 +44,12 @@ a + 2 + 3 == -b
 thread 'it_works' panicked at 'Assertion failed: a + 2 + 3 == -b', src/lib.rs:11
 
 ```
+
+## Limitations/Caveats
+
+ - All displayed subexpressions must implement `Debug`.
+ - The transformation of subexpression to strings via `Debug` is done _after_ the whole expression
+   has been evaluated. In cases where other subexpressions cause changes to previously
+   evaluated subexpression the displayed value may be incorrect.
+ - The logical expressions `&&` and `||` are not evaluated lazily.
+ - A new binding is created for each subexpression, this may have unintended side effects.
