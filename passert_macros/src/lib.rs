@@ -98,21 +98,42 @@ impl ExpressionCollector {
 
     fn collect_expression(&mut self, expr: &P<Expr>, cx: &mut ExtCtxt) -> P<Expr> {
         match (*expr).node {
+            // a + b
             Expr_::ExprBinary(ref op, ref a, ref b) => {
                 let new_a = self.collect_expression(a, cx);
                 let new_b = self.collect_expression(b, cx);
                 let new_expr = cx.expr_binary(expr.span, op.node, new_a, new_b);
                 self.create_let_statement(&new_expr, cx, op.span)
             }
+            // -a
             Expr_::ExprUnary(ref op, ref a) => {
                 let new_a = self.collect_expression(a, cx);
                 let new_expr = cx.expr_unary(expr.span, *op, new_a);
                 self.create_let_statement(&new_expr, cx, expr.span)
             }
+            // func(args)
+            Expr_::ExprCall(ref func, ref args) => {
+                let new_args = args.iter().map(|arg| self.collect_expression(arg, cx)).collect();
+                let new_expr = cx.expr_call(expr.span, func.clone(), new_args);
+                self.create_let_statement(&new_expr, cx, expr.span)
+            }
+            // x.func(args)
+            Expr_::ExprMethodCall(ref ident, ref tys, ref args) => {
+                let new_args = args.iter().map(|arg| self.collect_expression(arg, cx)).collect();
+                let new_expr = cx.expr(expr.span, ast::ExprMethodCall(ident.clone(), tys.clone(), new_args));
+                self.create_let_statement(&new_expr, cx, ident.span)
+            }
+            // (expr)
+            Expr_::ExprParen(ref expr) => {
+                // Ingore the parens, just extract the inner expression
+                self.collect_expression(expr, cx)
+            }
+            // e.g. "Foo", 3
             Expr_::ExprLit(_) => {
                 // Omit literals since they should be in the original string verbatim
                 expr.clone()
             }
+            // All others (macros, derefs, indexing, etc)
             _ => {
                 self.create_let_statement(expr, cx, expr.span)
             }
