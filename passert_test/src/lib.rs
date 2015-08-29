@@ -113,3 +113,11 @@ fn method_call_expression_false() {
     let str = "foo";
     passert!(str.to_ascii_uppercase() == "BAR");
 }
+
+#[test]
+fn hygiene() {
+    let a = 42;
+    // Verify that this temp_0 is used, not the new binding inside the block
+    let temp_0 = 43;
+    passert!(a + 1 == temp_0);
+}
