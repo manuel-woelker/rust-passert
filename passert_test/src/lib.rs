@@ -121,3 +121,16 @@ fn hygiene() {
     let temp_0 = 43;
     passert!(a + 1 == temp_0);
 }
+
+#[test]
+fn power_assert_testcase_true() {
+    fn foo() -> i32 { 1 }
+    passert!(foo() == 1);
+}
+
+#[test]
+#[should_panic(expected = "Assertion failed: foo() == 2")]
+fn power_assert_testcase_false() {
+    fn foo() -> i32 { 1 }
+    passert!(foo() == 2);
+}
