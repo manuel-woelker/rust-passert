@@ -1,6 +1,6 @@
 [package]
 name = "passert_macros"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Manuel Woelker <github@manuel.woelker.org>"]
 description = "Pretty/Power assertion macros for rust (macro crate)"
 
